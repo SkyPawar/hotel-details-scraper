@@ -22,3 +22,5 @@ A Python Flask web app to scrape hotel/motel details USA Country base (name, pri
 ```bash
 pip install -r requirements.txt
 python app.py
+
+Ignore the scraper.py file just run the app.py file
