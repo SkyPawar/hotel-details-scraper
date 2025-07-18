@@ -1,4 +1,7 @@
-requests
+Flask
 beautifulsoup4
+selenium
+requests
 pandas
 fake_useragent
+gunicorn
