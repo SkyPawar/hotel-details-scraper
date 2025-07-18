@@ -174,28 +174,6 @@ class AdvancedHotelScraper:
                 return match.group().strip()
         return None
     
-    # def extract_email(self, text):
-    #     """Extract email from text using regex"""
-    #     if not text:
-    #         return None
-        
-    #     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-    #     match = re.search(email_pattern, text)
-    #     return match.group() if match else None
-    
-    # def extract_price_amount(self, price_text):
-    #     """Extract numeric price amount from price text"""
-    #     if not price_text:
-    #         return None
-        
-    #     # Remove currency symbols and extract numbers
-    #     price_clean = re.sub(r'[^\d.,]', '', price_text)
-    #     price_match = re.search(r'(\d+[.,]?\d*)', price_clean)
-        
-    #     if price_match:
-    #         return price_match.group(1).replace(',', '')
-    #     return None
-    
     def get_hotel_details(self, hotel_url, source, name=None, city=None, country=None):
         """Get detailed hotel information from hotel page"""
         if not hotel_url:
@@ -222,20 +200,6 @@ class AdvancedHotelScraper:
                 if phone_elem:
                     details['phone'] = self.extract_phone_number(phone_elem.get_text())
                     break
-            
-            # Extract email
-            # email_selectors = [
-            #     '[data-testid="email"]',
-            #     '.email',
-            #     '.hotel-email',
-            #     '.contact-email'
-            # ]
-            
-            # for selector in email_selectors:
-            #     email_elem = soup.select_one(selector)
-            #     if email_elem:
-            #         details['email'] = self.extract_email(email_elem.get_text())
-            #         break
             
             # Extract official website
             website_selectors = [
@@ -396,239 +360,6 @@ class AdvancedHotelScraper:
         self.random_delay()
         return hotels
     
-    def scrape_hotels_com(self, city, country, min_rating=None):
-        """Scrape Hotels.com for hotels"""
-        print(f"\nScraping Hotels.com for hotels in {city}, {country}")
-        hotels = []
-        
-        # Hotels.com search URL
-        url = f"https://www.hotels.com/search.do?q-destination={quote(city + ', ' + country)}"
-        
-        html = self.get_page_selenium(url) if self.use_selenium else self.get_page_requests(url)
-        
-        if not html:
-            return hotels
-        
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        # Look for hotel listings
-        selectors = [
-            'section[data-stid="section-results"] li',
-            '.results-list li',
-            '[data-testid="property-listing"]'
-        ]
-        
-        for selector in selectors:
-            elements = soup.select(selector)
-            if elements:
-                break
-        
-        for element in elements[:15]:
-            try:
-                # Extract name
-                name_elem = element.select_one('h3 a, .p-name a, [data-testid="property-name"]')
-                if not name_elem:
-                    continue
-                
-                name = name_elem.get_text(strip=True)
-                
-                # Extract rating
-                rating_elem = element.select_one('[data-testid="review-score"], .review-score')
-                rating = None
-                if rating_elem:
-                    rating_text = rating_elem.get_text(strip=True)
-                    rating_match = re.search(r'(\d+\.?\d*)', rating_text)
-                    if rating_match:
-                        rating = float(rating_match.group(1))
-                
-                # Extract price
-                price_elem = element.select_one('[data-testid="price-summary"], .price')
-                price = price_elem.get_text(strip=True) if price_elem else None
-                price_amount = self.extract_price_amount(price)
-                
-                # Extract URL
-                url_elem = element.select_one('a[href]')
-                hotel_url = url_elem['href'] if url_elem else ''
-                if hotel_url and not hotel_url.startswith('http'):
-                    hotel_url = 'https://www.hotels.com' + hotel_url
-                
-                # Filter by rating
-                if min_rating and rating and rating < min_rating:
-                    continue
-                
-                # Get additional details
-                details = self.get_hotel_details(hotel_url, 'Hotels.com')
-                
-                hotel = {
-                    'name': name,
-                    'rating': rating,
-                    'price': price,
-                    'price_amount': price_amount,
-                    'url': hotel_url,
-                    'source': 'Hotels.com',
-                    'city': city,
-                    'country': country,
-                    'phone': details.get('phone'),
-                    'email': details.get('email'),
-                    'website': details.get('website')
-                }
-                
-                hotels.append(hotel)
-                
-            except Exception as e:
-                print(f"Error parsing Hotels.com result: {e}")
-                continue
-        
-        self.random_delay()
-        return hotels
-    
-    def scrape_expedia(self, city, country, min_rating=None):
-        """Scrape Expedia for hotels"""
-        print(f"\nScraping Expedia for hotels in {city}, {country}")
-        hotels = []
-        
-        # Expedia search URL
-        url = f"https://www.expedia.com/Hotel-Search?destination={quote(city + ', ' + country)}"
-        
-        html = self.get_page_selenium(url) if self.use_selenium else self.get_page_requests(url)
-        
-        if not html:
-            return hotels
-        
-        soup = BeautifulSoup(html, 'html.parser')
-        
-        # Look for hotel listings
-        elements = soup.select('[data-stid="section-results"] li, .results-list li')
-        
-        for element in elements[:15]:
-            try:
-                # Extract name
-                name_elem = element.select_one('h3 a, .hotel-name a')
-                if not name_elem:
-                    continue
-                
-                name = name_elem.get_text(strip=True)
-                
-                # Extract rating
-                rating_elem = element.select_one('[data-testid="review-score"]')
-                rating = None
-                if rating_elem:
-                    rating_text = rating_elem.get_text(strip=True)
-                    rating_match = re.search(r'(\d+\.?\d*)', rating_text)
-                    if rating_match:
-                        rating = float(rating_match.group(1))
-                
-                # Extract price
-                price_elem = element.select_one('[data-testid="price-summary"]')
-                price = price_elem.get_text(strip=True) if price_elem else None
-                price_amount = self.extract_price_amount(price)
-                
-                # Extract URL
-                url_elem = element.select_one('a[href]')
-                hotel_url = url_elem['href'] if url_elem else ''
-                if hotel_url and not hotel_url.startswith('http'):
-                    hotel_url = 'https://www.expedia.com' + hotel_url
-                
-                # Filter by rating
-                if min_rating and rating and rating < min_rating:
-                    continue
-                
-                # Get additional details
-                details = self.get_hotel_details(hotel_url, 'Expedia')
-                
-                hotel = {
-                    'name': name,
-                    'rating': rating,
-                    'price': price,
-                    'price_amount': price_amount,
-                    'url': hotel_url,
-                    'source': 'Expedia',
-                    'city': city,
-                    'country': country,
-                    'phone': details.get('phone'),
-                    'email': details.get('email'),
-                    'website': details.get('website')
-                }
-                
-                hotels.append(hotel)
-                
-            except Exception as e:
-                print(f"Error parsing Expedia result: {e}")
-                continue
-        
-        self.random_delay()
-        return hotels
-    
-    #This is working real code
-    # def scrape_google_maps_hotels(self, city, country, min_rating=None):
-    #     """Scrape Google Maps for hotels"""
-    #     print(f"\nScraping Google Maps for hotels in {city}, {country}")
-    #     hotels = []
-        
-    #     # Google Maps search URL
-    #     query = f"hotels in {city} {country}"
-    #     url = f"https://www.google.com/maps/search/{quote(query)}"
-        
-    #     html = self.get_page_selenium(url) if self.use_selenium else self.get_page_requests(url)
-        
-    #     if not html:
-    #         return hotels
-        
-    #     soup = BeautifulSoup(html, 'html.parser')
-        
-    #     # Look for business listings
-    #     elements = soup.select('[data-result-index] h3, .section-result h3')
-        
-    #     for element in elements[:20]:
-    #         try:
-    #             name = element.get_text(strip=True)
-                
-    #             # Find parent container
-    #             parent = element.find_parent('div', class_='section-result')
-    #             if not parent:
-    #                 parent = element.find_parent('div')
-                
-    #             # Extract rating
-    #             rating_elem = parent.select_one('[data-value]')
-    #             rating = None
-    #             if rating_elem and 'data-value' in rating_elem.attrs:
-    #                 try:
-    #                     rating = float(rating_elem['data-value'])
-    #                 except:
-    #                     pass
-                
-    #             # Extract phone number from Google Maps
-    #             phone_elem = parent.select_one('.google-symbols, [data-item-id="phone"]')
-    #             phone = self.extract_phone_number(parent.get_text()) if parent else None
-                
-    #             # Filter by rating
-    #             if min_rating and rating and rating < min_rating:
-    #                 continue
-                
-    #             hotel = {
-    #                 'name': name,
-    #                 'rating': rating,
-    #                 'price': None,
-    #                 'price_amount': None,
-    #                 'url': url,
-    #                 'source': 'Google Maps',
-    #                 'city': city,
-    #                 'country': country,
-    #                 'phone': phone,
-    #                 'email': None,
-    #                 'website': None
-    #             }
-                
-    #             hotels.append(hotel)
-                
-    #         except Exception as e:
-    #             print(f"Error parsing Google Maps result: {e}")
-    #             continue
-        
-    #     self.random_delay()
-    #     return hotels
-    
-    #This is testing code (duplicate)
     def scrape_google_maps_hotels(self, city, country, min_rating=None):
         query = f"hotels in {city} {country}"
         url = f"https://www.google.com/maps/search/{quote(query)}"
@@ -660,14 +391,6 @@ class AdvancedHotelScraper:
                     if contact:
                         print("Found phone:", contact)
                         break
-                # According to GeeksforGeeks, phone often in 4th or 5th W4Efsd element :contentReference[oaicite:6]{index=6}
-                # for idx in (3, 4):
-                #     if idx < len(info_elements):
-                #         text = info_elements[idx].text
-                #         if "+1" in text or re.search(r'\(\d{3}\)\s?\d{3}-\d{4}', text):
-                #             phone = self.extract_phone_number(text)
-                #             if phone:
-                #                 break
 
                 hotels.append({
                     'name': name,
@@ -686,54 +409,6 @@ class AdvancedHotelScraper:
         self.random_delay()
         return hotels
 
-    
-    #This is working code
-    # def get_contact_from_google_knowledge_panel(self, hotel_name, city, country):
-    #     """Extract phone from Google knowledge panel using Selenium"""
-    #     query = f"{hotel_name} {city} {country} contact number"
-    #     search_url = f"https://www.google.com/search?q={quote(query)}"
-        
-    #     if not self.use_selenium or not self.driver:
-    #         print("Selenium is required for this operation.")
-    #         return None
-
-    #     try:
-    #         self.driver.get(search_url)
-    #         WebDriverWait(self.driver, 10).until(
-    #             EC.presence_of_element_located((By.CSS_SELECTOR, 'body'))
-    #         )
-    #         time.sleep(2)  # Let JavaScript fully render the page
-            
-    #         # Find phone number from knowledge panel
-    #         try:
-    #             phone_elem = self.driver.find_element(By.XPATH, '//span[contains(text(), "+") or contains(text(), "(")]')
-    #             phone_text = phone_elem.text.strip()
-    #             if self.extract_phone_number(phone_text):
-    #                 return self.extract_phone_number(phone_text)
-    #         except:
-    #             pass
-
-    #         # Fallback to full page text
-    #         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-    #         return self.extract_phone_number(soup.get_text())
-
-    #     except Exception as e:
-    #         print(f"Google search failed: {e}")
-    #         self.random_delay()
-    #         return None
-    
-    
-    # def open_hotel_in_google_maps(self, hotel_name):
-    #     # from urllib.parse import quote
-    #     maps_url = f"https://www.google.com/maps/search/{quote(hotel_name)}"
-    #     print(f"Opening Google Maps for: {hotel_name}")
-    #     self.driver.get(maps_url)
-        
-    #     WebDriverWait(self.driver, 10).until(
-    #         EC.presence_of_element_located((By.TAG_NAME, "body"))
-    #     )
-
-    #This testing code duplicate
     def get_contact_from_google_knowledge_panel(self, hotel_name, city, country):
         print(f"DEBUG: Called get_contact_from_google_knowledge_panel for {hotel_name}, {city}, {country}")
         # self.open_hotel_in_google_maps(hotel_name)
@@ -753,7 +428,6 @@ class AdvancedHotelScraper:
                 if phone:
                     print("Found phone:", phone)
                     break
-            # print(f"DEBUG: Phone elements: {phone_elements}")
 
             # Look for phone patterns
             for pattern in [r"\+?1?\s?\(?\d{3}\)?[\s\-]\d{3}[\s\-]\d{4}", r"\d{3}[\s\-]\d{3}[\s\-]\d{4}"]:
@@ -776,9 +450,8 @@ class AdvancedHotelScraper:
         # List of scraping methods
         methods = [
             self.scrape_booking_com,
-            self.scrape_hotels_com,
-            self.scrape_expedia,
             self.scrape_google_maps_hotels
+            # You can add more sources here
         ]
         
         for method in methods:
