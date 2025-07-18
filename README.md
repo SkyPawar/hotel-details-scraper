@@ -18,6 +18,7 @@ A Python Flask web app to scrape hotel/motel details USA Country base (name, pri
 ✅ Proxy support and phone number extraction
 
 ## How to Run
+Ignore the scraper.py file just run the app.py file
 
 ```bash
 pip install -r requirements.txt
