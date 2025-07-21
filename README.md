@@ -5,8 +5,6 @@ Just run the script and enter city and country and you'll get Hotels/Motels deta
 A Python Flask web app to scrape hotel/motel details USA Country base (name, price, contact, etc.) using:
 
 - Booking.com
-- Hotels.com
-- Expedia
 - Google Maps
 
 ## Features
